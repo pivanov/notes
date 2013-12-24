@@ -37,12 +37,13 @@ var Searcher = new function() {
             return results;
         }
         
+        var htmlTagRegex = /(<([^>]+)>)/ig;
         for (var id in searchNotes) {
             var item = searchNotes[id],
                 match = 0;
             
             for (var j=0,jl=searchFields.length; j<jl; j++) {
-                var val = item["data_" + searchFields[j]],
+                var val = item["data_" + searchFields[j]].replace(htmlTagRegex, ""),
                     matches = val.match(regexMatch);
                     
                 if (matches && matches.length) {
