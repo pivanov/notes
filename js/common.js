@@ -440,10 +440,6 @@ var App = new function() {
 
     function onCardTransitionEnd(e) {
         var activeCard = $$('.card.active');
-
-        if(document.body.classList.contains('card-'+activeCard.id) && activeCard.id == 'note') {
-            NoteView.focus();
-        }
     }
 
     function onNotebookClick(type, notebook) {
