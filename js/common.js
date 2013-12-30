@@ -901,7 +901,18 @@ var App = new function() {
         };
 
         this.changed = function() {
-            return noteContentBeforeEdit !== elContent.innerHTML || noteNameBeforeEdit !== elEditTitle.value;
+            // Have to convert contents to DOM tree in order to compare properly
+            var wrapper= document.createElement('div');
+            wrapper.innerHTML= noteContentBeforeEdit;
+            var htmlContentBeforeEdit= wrapper.firstChild;
+            wrapper.innerHTML= elContent.innerHTML;
+            var htmlContentAfterEdit= wrapper.firstChild;
+
+            if (htmlContentBeforeEdit == null || htmlContentAfterEdit == null) {
+                return noteContentBeforeEdit !== elContent.innerHTML || noteNameBeforeEdit !== elEditTitle.value;
+            } else {
+                return !htmlContentBeforeEdit.isEqualNode(htmlContentAfterEdit) || noteNameBeforeEdit !== elEditTitle.value;
+            }
         };
 
         function onContentKeyUp(e) {
