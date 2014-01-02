@@ -668,6 +668,8 @@ var App = new function() {
             });
             el.addEventListener("touchend", function(e){
                 window.clearTimeout(this.timeoutHold);
+            });
+            el.addEventListener("click", function(e){
                 if (!this.edited && !tapIgnored) {
                     clickNotebook(notebook);
                 }
