@@ -19,7 +19,7 @@ var App = new function() {
         TEXTS = null,
         ORDERS = null,
         INFO_FIELDS = null,
-        SEARCH_FIELDS = ["text", "title"];
+        SEARCH_FIELDS = ["content", "title"];
 
     this.DEBUG = true;
 
@@ -1118,7 +1118,7 @@ var App = new function() {
     var NotebookView = new function() {
         var self = this,
             MAX_NOTE_PREVIEW_LENGTH = 420,
-            el = null, elTitle = null, elEditTitle = null, elSearchTitle = null, elEmptyNotes = null, $notesList = null,
+            el = null, elTitle = null, elEditTitle = null, elSearchTitle = null, elSearchNotes = null, elEmptyNotes = null, $notesList = null,
             currentNotebook = null, currentFilters = null, currentSort = "", currentIsDesc = false,
             onClickNote = null, notebookScrollOffset = 0,
             onChange = null;
@@ -1133,7 +1133,8 @@ var App = new function() {
             elEmptyNotes = el.querySelector(".empty p");
 
             elSearchTitle = el.querySelector("h2");
-
+            elSearchNotes = $("searchNotes");
+			
             elTitle.addEventListener("click", self.editTitle);
             elEditTitle.addEventListener("blur", self.saveEditTitle);
             elEditTitle.addEventListener("keyup", function(e){
@@ -1148,6 +1149,10 @@ var App = new function() {
         };
 
         this.show = function(notebook, filters, bDontScroll) {
+            // Hide Search title in case there were previous search results
+            self.hideSearchTitle();
+            elSearchNotes.value = '';
+
             if (filters) {
                 notebook = null;
                 currentNotebook = null;
@@ -1813,5 +1818,8 @@ var ArrayBufferHelper = {
 
 window.onload = function() {
     navigator.mozL10n.ready(App.init);
-    $('search').addEventListener('onsubmit', function(){return false;});
+    $('search').addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
 }
