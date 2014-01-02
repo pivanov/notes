@@ -548,8 +548,8 @@ var Evernote = new function() {
                         totalQueueChunks++;
                     }
                 }
+	            self.processQueueList();
             }
-            self.processQueueList();
         });
     };
 
@@ -558,7 +558,10 @@ var Evernote = new function() {
         var queue = null;
         var remainingSyncChunks = queueList.notebooks.length
                                 + queueList.notes.length;
-        var percentage = ((totalQueueChunks - remainingSyncChunks) * 100) / totalQueueChunks;
+        var percentage = 100;
+ 		if (totalQueueChunks > 0) {
+			percentage = ((totalQueueChunks - remainingSyncChunks) * 100) / totalQueueChunks;
+		}
         self.updateProgressBar(percentage);
         if (App.DEBUG) {
             Console.log('this.processQueueList');
@@ -648,6 +651,9 @@ var Evernote = new function() {
                             queue.remove(self.processQueueList);
                         });
                     }
+				} else {
+					// Note not in DB - skip it
+					queue.remove(self.processQueueList);
                 }
             });
         }
