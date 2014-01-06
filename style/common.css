@@ -836,3 +836,8 @@ progress[role="loading"] {
 body.loading .card:not(.active) {
     display: none;
 }
+
+#note-content img {
+    max-width:100%;
+    height: auto;
+}
