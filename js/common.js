@@ -1288,11 +1288,11 @@ var App = new function() {
 
         this.showSearchTitle = function() {
             elTitle.style.display = "none";
-            elSearchTitle.style.display = "block";
+            elSearchTitle.style.display = "";
         };
 
         this.hideSearchTitle = function() {
-            elTitle.style.display = "block";
+            elTitle.style.display = "";
             elSearchTitle.style.display = "none";
         };
 
