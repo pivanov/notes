@@ -768,6 +768,7 @@ var App = new function() {
 
             NoteActions.init({
                 "el": elActions,
+                "elContainer": el,
                 "onBeforeAction": onBeforeAction,
                 "onAfterAction": onAfterAction,
                 "label": options.NoteActionsPhotoLabel
@@ -1425,11 +1426,12 @@ var App = new function() {
 
     var NoteActions = new function() {
         var self = this,
-            el = null,
+            el = null, elContainer = null,
             onBeforeAction = null, onAfterAction = null, photoLabel = null;
 
         this.init = function(options) {
             el = options.el;
+            elContainer = options.elContainer;
             onBeforeAction = options.onBeforeAction;
             onAfterAction = options.onAfterAction;
 
@@ -1497,13 +1499,16 @@ var App = new function() {
         function actionShare() {
             onBeforeAction && onBeforeAction("share");
 
+            var elContent = elContainer.querySelector("#note-content");
+            var noteTitle = elContainer.querySelector("h1").innerHTML;
+			
 			// Get stripped text
-            var cloneDom = $("note-content").cloneNode(true);
+            var cloneDom = elContent.cloneNode(true);
             convertFormattingToText(cloneDom);
             var strippedText = stripHTML(cloneDom.innerHTML);
 
 			// Get HTML with inline images
-            cloneDom = $("note-content").cloneNode(true);
+            cloneDom = elContent.cloneNode(true);
             var imageNodes = cloneDom.getElementsByTagName('img');
             for (var j=0,m=imageNodes.length; j<m; j++) {
                 imageNodes[j].src = convertImgToBase64(imageNodes[j]);
@@ -1515,7 +1520,7 @@ var App = new function() {
                 name: "new",
                 data: {
                     type : "mail",
-                    url: "mailto:?subject=My%20Note&body="+encodeURIComponent(strippedText),
+                    url: "mailto:?subject="+encodeURIComponent(noteTitle)+"&body="+encodeURIComponent(strippedText),
                     blobs: [htmlBlob],
                     filenames: ["note"]
                 }
