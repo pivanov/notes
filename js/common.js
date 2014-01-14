@@ -103,7 +103,7 @@ var App = new function() {
             "elUploadLeft": $$("#settings .upload-left"),
             "elDaysLeft": $$("#settings .days-left"),
             "elSignout": $("button-evernote-logout"),
-            "elPremium": $("button-premium"),
+//            "elPremium": $("button-premium"),
             "onSignout": function() {
                 Evernote.logout();
             },
@@ -1641,7 +1641,7 @@ var App = new function() {
             elDaysLeft = options.elDaysLeft;
             options.elCancel.addEventListener("click", options.onCancel);
             options.elSignout.addEventListener("click", options.onSignout);
-            options.elPremium.addEventListener("click", options.onPremium);
+//            options.elPremium.addEventListener("click", options.onPremium);
             options.elSettings.addEventListener("click", options.onEnter);
         };
 
