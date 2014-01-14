@@ -1497,17 +1497,31 @@ var App = new function() {
         function actionShare() {
             onBeforeAction && onBeforeAction("share");
 
+			// Get stripped text
+            var cloneDom = $("note-content").cloneNode(true);
+            convertFormattingToText(cloneDom);
+            var strippedText = stripHTML(cloneDom.innerHTML);
 
+			// Get HTML with inline images
+            cloneDom = $("note-content").cloneNode(true);
+            var imageNodes = cloneDom.getElementsByTagName('img');
+            for (var j=0,m=imageNodes.length; j<m; j++) {
+                imageNodes[j].src = convertImgToBase64(imageNodes[j]);
+            }
+
+            var htmlData = [cloneDom.innerHTML];
+            var htmlBlob = new Blob(htmlData, {type : 'text/html'});
             var act = new MozActivity({
-                'name': 'new',
-                'data': {
-                    'type': 'mail',
-                    'URI': "mailto:?subject=My+Note&body=" + encodeURIComponent($("note-content").innerHTML)
+                name: "new",
+                data: {
+                    type : "mail",
+                    url: "mailto:?subject=My%20Note&body="+encodeURIComponent(strippedText),
+                    blobs: [htmlBlob],
+                    filenames: ["note"]
                 }
             });
             act.onsuccess = function(e){ };
             act.onerror = function(e){ };
-
 
             onAfterAction && onAfterAction("share");
         }
@@ -1763,6 +1777,77 @@ var App = new function() {
         }
     };
 };
+
+function convertFormattingToText(dom) {
+	// Replace ordered list items with numbered text
+    var olNodes = dom.getElementsByTagName('ol');
+    for (var i=0,l=olNodes.length; i<l; i++) {
+        var brNode = document.createElement("br");
+        olNodes[i].parentNode.insertBefore(brNode, olNodes[i]);
+	    var text = "";
+        var liNodes = olNodes[i].getElementsByTagName('li');
+        for (var j=0,m=liNodes.length; j<m; j++) {
+            text = text+(j+1)+". "+stripHTML(liNodes[j].innerHTML);
+        }
+        olNodes[i].innerHTML = text;
+    }
+
+	// Replace unordered list items with "* " prefixed text
+    var ulNodes = dom.getElementsByTagName('ul');
+    for (var i=0,l=ulNodes.length; i<l; i++) {
+        var brNode = document.createElement("br");
+        ulNodes[i].parentNode.insertBefore(brNode, ulNodes[i]);
+	    var text = "";
+        var liNodes = ulNodes[i].getElementsByTagName('li');
+        for (var j=0,m=liNodes.length; j<m; j++) {
+            text = text+"* "+stripHTML(liNodes[j].innerHTML);
+        }
+        ulNodes[i].innerHTML = text;
+    }
+
+	// Replace checked checkbox items with "x " prefixed text,
+	// unchecked item with just text.
+    var inputNodes = dom.getElementsByTagName('input');
+    for (var i=0,l=inputNodes.length; i<l; i++) {
+        if (inputNodes[i].type == "checkbox") {
+            var checked = inputNodes[i].checked;
+            var spanNode = document.createElement("span");
+            if (checked) {
+                spanNode.innerHTML = "x ";
+            } else {
+                spanNode.innerHTML = "  ";
+            }
+            inputNodes[i].parentNode.insertBefore(spanNode, inputNodes[i]);
+            var brNode = document.createElement("br");
+            spanNode.parentNode.insertBefore(brNode, spanNode);
+        }
+    }
+
+	// Remove tables
+    var tableNodes = dom.getElementsByTagName('table');
+    for (var i=0,l=tableNodes.length; i<l; i++) {
+        var brNode = document.createElement("br");
+        tableNodes[i].parentNode.insertBefore(brNode, tableNodes[i]);
+    }
+}
+
+function stripHTML(html) {
+	// Remove all HTML markups
+	var brTagRegex = /<br([^>]*)>/ig;
+	html = html.replace(brTagRegex, "\n");
+    var htmlTagRegex = /(<([^>]+)>)/ig;
+    return html.replace(htmlTagRegex, "");
+}
+
+function convertImgToBase64(img) {
+    var canvas = document.createElement("canvas");
+    canvas.width = img.width;  
+    canvas.height = img.height;  
+    var ctx = canvas.getContext("2d");  
+    ctx.drawImage(img, 0, 0);
+    var imgType = img.getAttribute("type")
+    return canvas.toDataURL(imgType);
+}
 
 function readableFilesize(size) {
     var sizes = ["kb", "mb", "gb", "tb"];
