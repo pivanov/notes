@@ -103,12 +103,8 @@ var App = new function() {
             "elUploadLeft": $$("#settings .upload-left"),
             "elDaysLeft": $$("#settings .days-left"),
             "elSignout": $("button-evernote-logout"),
-            "elPremium": $("button-premium"),
             "onSignout": function() {
                 Evernote.logout();
-            },
-            "onPremium": function() {
-                Evernote.premium();
             },
             "onEnter": function() {
                 cards.goTo(cards.CARDS.SETTINGS);
@@ -1660,7 +1656,6 @@ var App = new function() {
             elDaysLeft = options.elDaysLeft;
             options.elCancel.addEventListener("click", options.onCancel);
             options.elSignout.addEventListener("click", options.onSignout);
-            options.elPremium.addEventListener("click", options.onPremium);
             options.elSettings.addEventListener("click", options.onEnter);
         };
 
