@@ -1,8 +1,8 @@
 var Evernote = new function() {
     var self = this,
         EVERNOTE_SERVER = "https://www.evernote.com",
-        OAUTH_CONSUMER_KEY = "yor4",
-        OAUTH_CONSUMER_SECRET = "e5286e971e058b8d",
+        OAUTH_CONSUMER_KEY = "evme",
+        OAUTH_CONSUMER_SECRET = "8648664c5c37f043",
         OAUTH_TOKEN_SECRET = "",
         NOTESTORE_HOST = EVERNOTE_SERVER,
         NOTESTORE_PORT = "443",
