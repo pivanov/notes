@@ -331,7 +331,10 @@ var Evernote = new function() {
                                 + syncList.notes.length
                                 + syncList.expungedNotebooks.length
                                 + syncList.expungedNotes.length;
-        var percentage = ((totalSyncChunks - remainingSyncChunks) * 100) / totalSyncChunks;
+        var percentage = 100;
+        if (totalSyncChunks > 0) {
+            percentage = ((totalSyncChunks - remainingSyncChunks) * 100) / totalSyncChunks;
+        }
         self.updateProgressBar(percentage);
         if (App.DEBUG) {
             Console.log('this.processSyncList');
