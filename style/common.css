@@ -144,6 +144,7 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
         .notebook-notes li .text {
             float: left;
             overflow: hidden;
+            white-space: nowrap;
             text-overflow: ellipsis;
             max-width: 100%;
         }
@@ -249,6 +250,22 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
         pointer-events: inherit;
     }
 
+#note.card.readonly-trashed > .content {
+    top: 4.9rem;
+}
+    #note.readonly-trashed #note-edit-actions {
+        display: none;
+    }
+    #note.readonly-trashed #button-note-save {
+        display: none;
+    }
+    #note.readonly-trashed #note-content {
+        pointer-events: none;
+    }
+    #note.readonly-trashed > .footer {
+        display: block;
+    }
+
 #note.card.readonly > .content {
     top: 4.9rem;
 }
@@ -260,9 +277,6 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
     }
     #note.readonly #note-content {
         pointer-events: none;
-    }
-    #note.readonly > .footer {
-        display: block;
     }
 
 #note-edit-actions {
