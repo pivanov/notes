@@ -1063,7 +1063,7 @@ var ENMLofHTML = function(){
         }
 
         if (child.nodeType == Node.TEXT_NODE) {
-            var text = child.nodeValue.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&(?!amp;)/g, "&amp;");
+            var text = child.nodeValue.replace(/&(?!amp;)/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             self.writer.write(text);
         }
     },
