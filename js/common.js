@@ -206,7 +206,8 @@ var App = new function() {
             "ADD_IMAGE_TITLE": navigator.mozL10n.get("add-image-title"),
             "IMAGE_NOT_SUPPORTED": navigator.mozL10n.get("image-not-supported"),
             "PHOTO_LABEL": navigator.mozL10n.get("image-label"),
-            "NOTEBOOK_NAME_ALREADY_EXISTS": navigator.mozL10n.get("notebook-name-already-exists")
+            "NOTEBOOK_NAME_ALREADY_EXISTS": navigator.mozL10n.get("notebook-name-already-exists"),
+            "NOTE_UNSAVEABLE": navigator.mozL10n.get("note-unsaveable")
         };
 
         ORDERS = [
@@ -260,6 +261,14 @@ var App = new function() {
         Settings.update();
     };
 
+    this.updateNoteResource = function(resource) {
+        NoteView.updateResource(resource);
+    };
+    
+    this.noteResourceNotLoaded = function(resource) {
+        NoteView.missingResource();
+    };
+    
     this.getUserNotes = function(signedout) {
         user.getNotebooks(function(notebooks) {
             if (notebooks.length == 0) {
@@ -502,16 +511,24 @@ var App = new function() {
     function onNoteSave(noteAffected) {
         self.showNotes();
         NotebooksList.refresh();
-        self.addQueue('Note', noteAffected);
+        if (noteAffected) {
+            self.addQueue('Note', noteAffected);
+        }
     }
 
     function onNoteCancel(noteAffected, isChanged) {
+        if (isChanged && NoteView.currentNoteUnsaveable()) {
+            if (confirm(TEXTS.NOTE_UNSAVEABLE)) {
+                cards.goTo(cards.CARDS.MAIN);
+            }
+            return;
+        }
         if (isChanged && confirm(TEXTS.NOTE_CANCEL_CHANGES)) {
             NoteView.save();
             return;
         }
 
-        if (noteAffected.getName() == "" && noteAffected.getContent(true) == "") {
+        if (noteAffected.getName() == "" && noteAffected.getContent(true, false) == "") {
             noteAffected.remove(function onSuccess(){
                 self.showNotes();
                 NotebooksList.refresh();
@@ -723,7 +740,8 @@ var App = new function() {
 
             CLASS_EDIT_TITLE = "edit-title",
             CLASS_WHEN_VISIBLE = "visible",
-            CLASS_WHEN_TRASHED = "readonly",
+            CLASS_WHEN_TRASHED = "readonly-trashed",
+            CLASS_WHEN_READONLY = "readonly",
             CLASS_WHEN_HAS_IMAGES = "has-images";
 
         this.init = function(options) {
@@ -772,13 +790,14 @@ var App = new function() {
         };
 
         this.show = function(note, notebook) {
-            var noteContent = note.getContent(true).match(/<body[^>]*>([\w\W]*)<\/body>/),
+            el.classList.remove(CLASS_WHEN_READONLY);
+            
+            var noteContent = note.getContent(true, true),
                 noteName = note.getName();
-
-            if (noteContent && noteContent.length > 1) {
-                noteContent = noteContent[1];
-            } else {
-                noteContent = note.getContent(true);
+            var noteContentBody = noteContent.match(/<body[^>]*>([\w\W]*)<\/body>/);
+            
+            if (noteContentBody && noteContentBody.length > 1) {
+                noteContent = noteContentBody[1];
             }
 
             noteContentBeforeEdit = noteContent.replace(/\/>/g,">");
@@ -802,6 +821,30 @@ var App = new function() {
 
             currentNote = note;
             currentNotebook = notebook;
+        };
+
+        this.missingResource = function() {
+            el.classList.add(CLASS_WHEN_READONLY);
+        };
+        
+        this.updateResource = function(resource) {
+            // Update note resource
+            currentNote.updateResourceData(resource.guid, resource.data.body);
+
+            // Update note view
+            var key = "";
+            for (var i in resource.data.bodyHash) {
+                key += String("0123456789abcdef".substr((resource.data.bodyHash[i] >> 4) & 0x0F,1)) + "0123456789abcdef".substr(resource.data.bodyHash[i] & 0x0F,1);
+            }
+            var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(resource.data.body, resource.mime));
+            var imgs = elContent.getElementsByTagName("img");
+            for (var i = 0, l = imgs.length; i < l; i++) {
+                if (imgs[i].getAttribute("hash") === key) {
+                    // Update content before edit so change detection will work properly.
+                    noteContentBeforeEdit = noteContentBeforeEdit.replace(imgs[i].src, blobURL);
+                    imgs[i].src = blobURL;
+                }
+            }
         };
 
         this.loadResources = function(note) {
@@ -844,6 +887,13 @@ var App = new function() {
         };
 
         this.save = function() {
+            if (self.changed() && self.currentNoteUnsaveable()) {
+                if (confirm(TEXTS.NOTE_UNSAVEABLE)) {
+                    onSave && onSave(null);
+                }
+                return;
+            }
+
             var content = elContent.innerHTML,
                 name = (elEditTitle.value || elTitle.innerHTML).replace(/&amp;/g, "&");
 
@@ -897,11 +947,10 @@ var App = new function() {
 
         this.changed = function() {
             // Have to convert contents to DOM tree in order to compare properly
-            var wrapper= document.createElement('div');
-            wrapper.innerHTML= noteContentBeforeEdit;
-            var htmlContentBeforeEdit= wrapper.firstChild;
-            wrapper.innerHTML= elContent.innerHTML;
-            var htmlContentAfterEdit= wrapper.firstChild;
+            var htmlContentBeforeEdit= document.createElement('div');
+            htmlContentBeforeEdit.innerHTML= noteContentBeforeEdit;
+            var htmlContentAfterEdit= document.createElement('div');
+            htmlContentAfterEdit.innerHTML= elContent.innerHTML;
 
             if (htmlContentBeforeEdit == null || htmlContentAfterEdit == null) {
                 return noteContentBeforeEdit !== elContent.innerHTML || noteNameBeforeEdit !== elEditTitle.value;
@@ -910,6 +959,10 @@ var App = new function() {
             }
         };
 
+        this.currentNoteUnsaveable = function() {
+            return currentNote.isMissingResourceData();
+        };
+        
         function onContentKeyUp(e) {
             if (elContent.innerHTML) {
                 elSave.classList.add(CLASS_WHEN_VISIBLE);
@@ -1308,14 +1361,13 @@ var App = new function() {
         function getNoteElement(note) {
             var el = document.createElement("li");
 
-            var content = note.getContent(true).match(/<body[^>]*>([\w\W]*)<\/body>/);
-            if (content && content.length > 1) {
-                content = content[1];
-            } else {
-                content = note.getContent(true);
+            var content = note.getContent(true, false);
+            var contentBody = content.match(/<body[^>]*>([\w\W]*)<\/body>/);
+            if (contentBody && contentBody.length > 1) {
+                content = contentBody[1];
             }
             var title = (note.getName() || getNoteNameFromContent(content));
-
+            
             el.className = "note";
             el.dataset.noteId = note.getId();
             el.innerHTML = '<div>' +

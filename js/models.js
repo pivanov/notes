@@ -13,6 +13,7 @@ var Models = new function() {
         this.data_note_store_url = "";
         this.data_shard_url = "";
         this.data_expires = 0;
+        this.data_sync_try_count = 0;
         
         function init(options) {
             updateObject(self, options);
@@ -65,6 +66,7 @@ var Models = new function() {
         this.getLastUpdateCount = function() { return self.data_last_update_count; };
         this.getLastSyncTime = function() { return self.data_last_sync_time; };
         this.getAccounting = function() { return self.data_accounting; };
+        this.getSyncTryCount = function() { return self.data_sync_try_count; };
 
         this.export = function() {
             return exportModel(self);
@@ -323,10 +325,36 @@ var Models = new function() {
             }, cbSuccess, cbError);
         };
         
-        this.getContent = function(html) {
+        this.updateResourceData = function(guid, data, cbSuccess, cbError) {
+            if (!self.data_resources) {
+                return;
+            }
+            for (var i = 0, l = self.data_resources.length; i < l; i++) {
+                if (self.data_resources[i].guid === guid) {
+                    self.data_resources[i].data.body = data;
+                }
+            }
+            self.set({
+                resources : self.getResources()
+            }, cbSuccess, cbError);
+        };
+        
+        this.isMissingResourceData = function() {
+            if (!self.data_resources) {
+                return false;
+            }
+            for (var i = 0, l = self.data_resources.length; i < l; i++) {
+                if (self.data_resources[i].data.body == null) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        
+        this.getContent = function(html, loadResources) {
             if (html) {
                 if (html_content.length == 0) {
-                    html_content = Evernote.enml2html(self).replace(/\n/gi, "<br/>");
+                    html_content = Evernote.enml2html(self, loadResources).replace(/\n/gi, "<br/>");
                 }
                 return html_content;
             }
