@@ -478,31 +478,31 @@ var Evernote = new function() {
             if (App.DEBUG) {
                 Console.log('self.getNotebook: '+JSON.stringify(notebook));
             }
-            DB.getNotebooks({guid: notebook.guid}, function(resultsGuid){
+            DB.getNotebookByIndex("guid", notebook.guid, function(resultsGuid){
                 if (App.DEBUG) {
-                    Console.log('DB.getNotebooks by guid: '+JSON.stringify(resultsGuid));
+                    Console.log('DB.getNotebookByIndex by guid: '+JSON.stringify(resultsGuid));
                 }
-                DB.getNotebooks({name: notebook.name}, function(resultsName){
+                DB.getNotebookByIndex("name", notebook.name, function(resultsName){
                     if (App.DEBUG) {
-                        Console.log('DB.getNotebooks by name: '+JSON.stringify(resultsName));
+                        Console.log('DB.getNotebookByIndex by name: '+JSON.stringify(resultsName));
                     }
                     DB.getQueues({rel: "Notebook", rel_guid: notebook.guid}, function(resultsQueue){
                         if (App.DEBUG) {
                             Console.log('DB.getQueues by notebook.guid: '+JSON.stringify(resultsQueue));
                         }
                         if (resultsQueue.length == 0) {
-                            if (resultsGuid.length == 0) {
-                                if (resultsName.length == 0) {
+                            if (resultsGuid == null) {
+                                if (resultsName == null) {
                                     App.getUser().newNotebook(notebook, self.processSyncChunkList);
                                 } else {
-                                    if (!resultsName[0].getGuid() || resultsName[0].getGuid() == notebook.guid) {
-                                        resultsName[0].set(notebook, self.processSyncChunkList);
+                                    if (!resultsName.getGuid() || resultsName.getGuid() == notebook.guid) {
+                                        resultsName.set(notebook, self.processSyncChunkList);
                                     } else {
                                         App.getUser().newNotebook(notebook, self.processSyncChunkList);
                                     }
                                 }
                             } else {
-                                resultsGuid[0].set(notebook, self.processSyncChunkList);
+                                resultsGuid.set(notebook, self.processSyncChunkList);
                             }
                         } else {
                             if (resultsQueue[0].getExpunge()) {
@@ -517,22 +517,22 @@ var Evernote = new function() {
                                     self.processSyncChunkList();
                                 }
                             } else {
-                                if (resultsGuid[0].getName() != notebook.name) {
+                                if (resultsGuid.getName() != notebook.name) {
                                     if (!TEXTS) {
                                         self.setupTexts();
                                     }
                                     var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(notebook.serviceUpdated));
                                         txt = txt.replace("{{object}}", "Notebook");
-                                        txt = txt.replace("{{name}}", '"'+resultsGuid[0].getName()+'"');
+                                        txt = txt.replace("{{name}}", '"'+resultsGuid.getName()+'"');
                                     if (!confirm(txt)) {
-                                        resultsGuid[0].set(notebook, function(){
+                                        resultsGuid.set(notebook, function(){
                                             resultsQueue[0].remove(self.processSyncChunkList);
                                         });
                                     } else {
                                         self.processSyncChunkList();
                                     }
                                 } else {
-                                    resultsGuid[0].set(notebook, self.processSyncChunkList);
+                                    resultsGuid.set(notebook, self.processSyncChunkList);
                                 }
                             }
                         }
@@ -545,18 +545,19 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('this.processNoteChunk (chunk): '+JSON.stringify(chunk));
         }
-        if (JSON.stringify(chunk).indexOf("image") != -1) {
-            Console.log('this.processNoteChunk (chunk): '+JSON.stringify(chunk));
-        }
+        Console.log('self.getNote: start for '+chunk.guid);
         self.getNote(chunk.guid, function(note){
+            Console.log('self.getNote: done for '+chunk.guid);
             if (App.DEBUG) {
                 Console.log('self.getNote: '+JSON.stringify(note));
             }
-            DB.getNotes({guid: note.guid}, function(resultsNote){
+            DB.getNoteByIndex("guid", note.guid, function(resultsNote){
+                Console.log('DB.getNoteByIndex: done for '+note.guid);
                 if (App.DEBUG) {
-                    Console.log('DB.getNotes: '+JSON.stringify(resultsNote));
+                    Console.log('DB.getNoteByIndex: '+JSON.stringify(resultsNote));
                 }
                 DB.getQueues({rel: "Note", rel_guid: note.guid}, function(resultsQueue){
+                    Console.log('DB.getQueues: done for '+note.guid);
                     if (App.DEBUG) {
                         Console.log('DB.getQueues by note.guid: '+JSON.stringify(resultsQueue));
                     }
@@ -566,12 +567,12 @@ var Evernote = new function() {
                         }
                         var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(note.updated));
                             txt = txt.replace("{{object}}", "Note");
-                            txt = txt.replace("{{name}}", '"'+resultsNote[0].getTitle()+'"');
+                            txt = txt.replace("{{name}}", '"'+resultsNote.getTitle()+'"');
                         if (!confirm(txt)) {
-                            resultsNote[0].set(note, function(newNote){
-                                if (resultsNote[0].isTrashed() && newNote.isActive()) {
+                            resultsNote.set(note, function(newNote){
+                                if (resultsNote.isTrashed() && newNote.isActive()) {
                                     newNote.restore(self.processSyncChunkList);
-                                } else if (!resultsNote[0].isTrashed() && !newNote.isActive()) {
+                                } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
                                     newNote.trash(self.processSyncChunkList);
                                 } else {
                                     self.processSyncChunkList();
@@ -581,23 +582,23 @@ var Evernote = new function() {
                             self.processSyncChunkList();
                         }
                     } else {
-                        if (resultsNote.length > 0) {
-                            resultsNote[0].set(note, function(newNote){
-                                if (resultsNote[0].isTrashed() && newNote.isActive()) {
+                        if (resultsNote) {
+                            resultsNote.set(note, function(newNote){
+                                if (resultsNote.isTrashed() && newNote.isActive()) {
                                     newNote.restore(self.processSyncChunkList);
-                                } else if (!resultsNote[0].isTrashed() && !newNote.isActive()) {
+                                } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
                                     newNote.trash(self.processSyncChunkList);
                                 } else {
                                     self.processSyncChunkList();
                                 }
                             });
                         } else {
-                            DB.getNotebooks({guid: note.notebookGuid}, function(notebooks){
+                            DB.getNotebookByIndex("guid", note.notebookGuid, function(notebook){
                                 if (App.DEBUG) {
-                                    Console.log('DB.getNotebooks: '+JSON.stringify(notebooks));
+                                    Console.log('DB.getNotebookByIndex: '+JSON.stringify(notebook));
                                 }
-                                if (notebooks.length > 0) {
-                                    notebooks[0].newNote(note, function(newNote){
+                                if (notebook) {
+                                    notebook.newNote(note, function(newNote){
                                         if (!newNote.isActive()) {
                                             newNote.trash();
                                         }
@@ -617,9 +618,9 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('this.processExpungedNotebookChunk (chunk): '+JSON.stringify(chunk));
         }
-        DB.getNotebooks({guid: chunk}, function(notebook){
-            if (notebook.length > 0) {
-                notebook[0].remove();
+        DB.getNotebookByIndex("guid", chunk, function(notebook){
+            if (notebook) {
+                notebook.remove();
             }
             self.processSyncChunkList();
         });
@@ -628,9 +629,9 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('this.processExpungedNoteChunk (chunk): '+JSON.stringify(chunk));
         }
-        DB.getNotes({guid: chunk}, function(note){
-            if (note.length > 0) {
-                note[0].remove();
+        DB.getNoteByIndex("guid", chunk, function(note){
+            if (note) {
+                note.remove();
             }
             self.processSyncChunkList();
         });
