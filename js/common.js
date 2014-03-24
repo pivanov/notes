@@ -2,11 +2,13 @@ var App = new function() {
     var self = this,
         cards = null, user = null,
         $notebooksList = null, elButtonNewNote = null,
+        elButtonEvernoteLogin = null,
         createNoteOnTap = false,
 
         LOGGER_NAMESPACE = "[FxOS-Notes]",
         TIME_FOR_NEW_NOTE_DOUBLECLICK = 200,
         NUMBER_OF_SCROLL_RETRIES = 10,
+        EVERNOTE_SYNC_MIN_GECKO_VERSION = 26,
         EMPTY_CONTENT_CLASS = "show-empty",
         CLASS_EDIT_TITLE = "edit-title",
         CLASS_SEARCH_RESULTS = "search-results",
@@ -125,6 +127,9 @@ var App = new function() {
             self.newNote();
         });
 
+        elButtonEvernoteLogin = $("button-evernote-login");
+        self.checkGeckoVersion();
+        
         DB.init(initUser);
 
         document.body.classList.remove(CLASS_LOADING);
@@ -252,6 +257,15 @@ var App = new function() {
         ];
     };
 
+    this.checkGeckoVersion = function checkGeckoVersion() {
+        var str = navigator.userAgent;
+        var regex = new RegExp("Gecko/[0-9\.]+");
+        var geckoVersion = parseFloat(str.match(regex)[0].split("/")[1]);
+        if (geckoVersion < EVERNOTE_SYNC_MIN_GECKO_VERSION) {
+            elButtonEvernoteLogin.style.display = "none";
+        }
+    };
+    
     this.getUser = function() {
         return user;
     };
