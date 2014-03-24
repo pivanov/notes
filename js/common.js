@@ -353,8 +353,8 @@ var App = new function() {
 
     this.showNote = function showNote(note, notebook) {
         if (typeof note === "string") {
-            DB.getNotes({"id": note}, function(notes) {
-                self.showNote(notes[0], notebook);
+            DB.getNoteByKey(note, function(obj) {
+                self.showNote(obj, notebook);
             });
         } else {
             NoteView.show(note, notebook);

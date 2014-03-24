@@ -6,7 +6,7 @@ var DB = new function() {
         
         db = null,
         DB_NAME = "EVME_Notes",
-        DB_VERSION = 4,
+        DB_VERSION = 5,
         
         schema = {
             "notes": {
@@ -19,7 +19,7 @@ var DB = new function() {
             },
             "notebooks": {
                 "objectName": "Notebook",
-                "indexes": ["user_id", "guid"]
+                "indexes": ["user_id", "guid", "name"]
             },
             "users": {
                 "objectName": "User"
@@ -39,6 +39,8 @@ var DB = new function() {
             
             (function(tableName, objName) {
                 self['get' + objName + "s"] = function(filters, c, e) { self.get(tableName, filters, c, e); };
+                self['get' + objName + "ByKey"] = function(key, c, e) { self.getByKey(tableName, key, c, e); };
+                self['get' + objName + "ByIndex"] = function(index, key, c, e) { self.getByIndex(tableName, index, key, c, e); };
                 self['add' + objName] = function(obj, c, e) { self.add(tableName, obj, c, e); };
                 self['update' + objName] = function(obj, c, e) { self.update(tableName, obj, c, e); };
                 self['remove' + objName] = function(obj, c, e) { self.remove(tableName, obj.getId(), c, e); };
@@ -86,6 +88,33 @@ var DB = new function() {
         request.onfailure = function(e) {};
         
         Console.log("DB update -" + table + "-: ", obj);
+    };
+    
+    this.getByKey = function(table, key, c, e) {
+        var request = db.transaction(table).objectStore(table).get(key);
+        
+        request.onsuccess = function(event) {
+            if (event.target.result) {
+                c && c(unserialize(event.target.result, table));
+            } else {
+                c && c(null);
+            }
+        };
+        request.onfailure = e || self.onerror;
+    };
+    
+    this.getByIndex = function(table, index, key, c, e) {
+        var index = db.transaction(table).objectStore(table).index(index);
+        var request = index.get(key);
+        
+        request.onsuccess = function(event) {
+            if (event.target.result) {
+                c && c(unserialize(event.target.result, table));
+            } else {
+                c && c(null);
+            }
+        };
+        request.onfailure = e || self.onerror;
     };
     
     this.get = function(table, filters, c, e) {

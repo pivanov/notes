@@ -121,7 +121,7 @@ var Models = new function() {
             
             var note = new Models.Note(options);
             DB.addNote(note, function onSuccess(){
-                self.updateNotesCount(function onSuccess() {
+                self.updateNotesCount(1, 0, function onSuccess() {
                     cbSuccess && cbSuccess(note);
                 }, cbError);
             }, cbError);
@@ -154,12 +154,16 @@ var Models = new function() {
             DB.removeNotebook(self, cbSuccess, cbError);
         };
         
-        this.updateNotesCount = function(cbSuccess, cbError, options) {
+        this.updateNotesCount = function(delta, trashedDelta, cbSuccess, cbError, options) {
             if (!options) {
                 options = {};
             }
             
-            self.getNotes(true, function(notes) {
+            options.numberOfNotes = self.data_numberOfNotes + delta;
+            options.numberOfTrashedNotes = self.data_numberOfTrashedNotes + trashedDelta;
+            self.set(options, cbSuccess, cbError);
+            
+/*            self.getNotes(true, function(notes) {
                 options.numberOfNotes = 0;
                 options.numberOfTrashedNotes = 0;
                 
@@ -173,6 +177,7 @@ var Models = new function() {
                 
                 self.set(options, cbSuccess, cbError);
             }, cbError);
+*/
         };
         
         this.getId = function() { return self.data_id; };
@@ -252,7 +257,7 @@ var Models = new function() {
                 "trashed": true,
                 "active": false
             }, function onSuccess() {
-                self.updateNotebookNotesCount(cbSuccess, cbError);
+                self.updateNotebookNotesCount(-1, 1, cbSuccess, cbError);
             }, cbError);
         };
         
@@ -265,7 +270,7 @@ var Models = new function() {
                     "active": true
                 },
                 function onSuccess() {
-                    self.updateNotebookNotesCount(cbSuccess, cbError, {"trashed": false});
+                    self.updateNotebookNotesCount(1, -1, cbSuccess, cbError, {"trashed": false});
                 },
                 cbError
             ];
@@ -282,19 +287,23 @@ var Models = new function() {
         
         this.remove = function(cbSuccess, cbError) {
             DB.removeNote(self, function() {
-                self.updateNotebookNotesCount(cbSuccess, cbError);
+                if (self.data_trashed) {
+                    self.updateNotebookNotesCount(0, -1, cbSuccess, cbError);
+                } else {
+                    self.updateNotebookNotesCount(-1, 0, cbSuccess, cbError);
+                }
             }, cbError);
         };
         
         this.getNotebook = function(cbSuccess, cbError) {
-            DB.getNotebooks({"id": self.getNotebookId()}, function(notebooks){
-                cbSuccess && cbSuccess(notebooks[0]);
+            DB.getNotebookByKey(self.getNotebookId(), function(notebook){
+                cbSuccess && cbSuccess(notebook);
             }, cbError);
         };
         
-        this.updateNotebookNotesCount = function(cbSuccess, cbError, additionalOptions) {
+        this.updateNotebookNotesCount = function(delta, trashedDelta, cbSuccess, cbError, additionalOptions) {
             self.getNotebook(function(notebook){
-                notebook.updateNotesCount(cbSuccess, cbError, additionalOptions);
+                notebook.updateNotesCount(delta, trashedDelta, cbSuccess, cbError, additionalOptions);
             }, cbError);
         };
         
