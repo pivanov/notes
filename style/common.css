@@ -135,23 +135,26 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
         cursor: pointer;
     }
         .notebook-notes li .title {
-            clear: left;
-            font-size: 1.8rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .notebook-notes li .text {
             float: left;
-            overflow: hidden;
+            font-size: 1.6rem;
             white-space: nowrap;
+            overflow: hidden;
             text-overflow: ellipsis;
             max-width: 100%;
         }
+        .notebook-notes li .text {
+            clear: left;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            color: #444;
+        }
         .notebook-notes li .time {
-            float: left;
+            float: right;
             margin-left: 0.3rem;
-            font-size: 1.3rem;
+            font-style: italic;
+            font-size: 1.1rem;
+            vertical-align: bottom;
             color: #666;
         }
         .notebook-notes li .image {
@@ -278,6 +281,15 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
     #note.readonly #note-content {
         pointer-events: none;
     }
+
+#warning {
+    display: none;
+    position: absolute;
+    top: 6rem;
+    left: 1rem;
+    color: #a0a0a0;
+    font-size: 12px;
+}
 
 #note-edit-actions {
     position: absolute;

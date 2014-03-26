@@ -348,6 +348,12 @@ var Models = new function() {
             }, cbSuccess, cbError);
         };
         
+        this.updateContent = function(data, cbSuccess, cbError) {
+            self.set({
+                content : data
+            }, cbSuccess, cbError)
+        };
+
         this.isMissingResourceData = function() {
             if (!self.data_resources) {
                 return false;
@@ -363,7 +369,7 @@ var Models = new function() {
         this.getContent = function(html, loadResources) {
             if (html) {
                 if (html_content.length == 0) {
-                    html_content = Evernote.enml2html(self, loadResources).replace(/\n/gi, "<br/>");
+                    html_content = Evernote.enml2html(self, loadResources);
                 }
                 return html_content;
             }

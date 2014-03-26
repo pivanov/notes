@@ -21,6 +21,9 @@ var App = new function() {
         TEXTS = null,
         ORDERS = null,
         INFO_FIELDS = null,
+        imageResizeQueue = [],
+        imageLoadQueue = [],
+        resizeInProgress = 0,
         SEARCH_FIELDS = ["content", "title"];
 
     this.DEBUG = true;
@@ -275,14 +278,10 @@ var App = new function() {
         Settings.update();
     };
 
-    this.updateNoteResource = function(resource) {
-        NoteView.updateResource(resource);
+    this.updateNoteContent = function(note) {
+        NoteView.updateContent(note);
     };
-    
-    this.noteResourceNotLoaded = function(resource) {
-        NoteView.missingResource();
-    };
-    
+
     this.getUserNotes = function(signedout) {
         user.getNotebooks(function(notebooks) {
             if (notebooks.length == 0) {
@@ -422,6 +421,90 @@ var App = new function() {
         document.body.classList.add('loggedin');
     };
 
+    this.pendingResourceData = function(guid) {
+        imageLoadQueue.push({
+            "guid" : guid
+        });
+    };
+    
+    this.resourceDataLoaded = function(resource) {
+        var indexFound = null;
+        for (var i = 0, len = imageLoadQueue.length; i < len; i++) {
+            if (imageLoadQueue[i].guid === resource.guid) {
+                indexFound = i;
+            }
+        }
+        imageLoadQueue.splice(indexFound, 1);
+        
+        NoteView.updateResource(resource);
+
+        var key = "";
+        for (var i in resource.data.bodyHash) {
+            key += String("0123456789abcdef".substr((resource.data.bodyHash[i] >> 4) & 0x0F,1)) + "0123456789abcdef".substr(resource.data.bodyHash[i] & 0x0F,1);
+        }
+        App.resizeImage(resource.data.body, resource.width, resource.height, resource.mime, key);
+    };
+    
+    this.noteResourceNotLoaded = function(resource) {
+        NoteView.missingResource();
+    };
+    
+    this.resizeImage = function(data, width, height, type, hash) {
+        if (screen.width < width) {
+            imageResizeQueue.push({
+               "data" : data,
+               "width" : width,
+               "height" : height,
+               "type" : type,
+               "hash" : hash
+            });
+            if (resizeInProgress == 0) {
+                self.processImageResizeQueue();
+            }
+            return null;
+        } else {
+            var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(data, type));
+            NoteView.renderImageResource(blobURL, hash);
+            return blobURL;            
+        }
+    };
+    
+    this.processImageResizeQueue = function() {
+        if (imageResizeQueue.length > 0) {
+            var item = imageResizeQueue.pop();
+            var data = item.data;
+            var width = item.width;
+            var height = item.height;
+            var type = item.type;
+            var hash = item.hash;
+            var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(data, type));
+            var image = document.createElement('img');
+            image.onload = function() {
+                var newWidth = screen.width;
+                var newHeight = Math.floor((screen.width*height)/width);
+                var canvas = document.createElement('canvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(image, 0, 0, newWidth, newHeight);
+                canvas.toBlob(function (blob) {
+                    NoteView.renderImageResource(window.URL.createObjectURL(blob), hash);
+                    resizeInProgress--;
+                    self.processImageResizeQueue();
+                }, type);
+            };
+            image.type = type;
+            image.width = width;
+            image.height = height;
+            image.src = blobURL;
+            resizeInProgress++;
+        } else {
+            if (imageLoadQueue.length == 0) {
+                NoteView.renderImageComplete();
+            }
+        }
+    };
+
     function validateNotebookName(name, id, cbSuccess, cbError) {
         DB.getNotebooks({"name": name}, function(notebooks) {
             var notebookWithNameExists = false;
@@ -550,6 +633,8 @@ var App = new function() {
 
             });
         } else {
+            imageResizeQueue = [];
+            imageLoadQueue = [];
             cards.goTo(cards.CARDS.MAIN);
         }
     }
@@ -749,7 +834,7 @@ var App = new function() {
             currentNote = null, currentNotebook = null,
             noteContentBeforeEdit = "", noteNameBeforeEdit = "",
             el = null, elContent = null, elResources = null, elTitle = null, elEditTitle = null, elActions = null,
-            elRestore = null, elDelete = null,
+            elRestore = null, elDelete = null, elWarning = null,
             onSave = null, onCancel = null, onRestore = null, onDelete = null, onTitleChange = null,
 
             CLASS_EDIT_TITLE = "edit-title",
@@ -777,7 +862,8 @@ var App = new function() {
             elActions = el.querySelector("#note-edit-actions");
             elRestore = el.querySelector("#button-note-restore");
             elDelete = el.querySelector("#button-note-delete");
-
+            elWarning = el.querySelector('#warning');
+            
             elTitle.addEventListener("click", self.editTitle);
             elEditTitle.addEventListener("blur", self.saveEditTitle);
             elEditTitle.addEventListener("keyup", function(e){
@@ -804,20 +890,28 @@ var App = new function() {
         };
 
         this.show = function(note, notebook) {
-            el.classList.remove(CLASS_WHEN_READONLY);
-            
+            elWarning.style.display = "none";
             var noteContent = note.getContent(true, true),
                 noteName = note.getName();
-            var noteContentBody = noteContent.match(/<body[^>]*>([\w\W]*)<\/body>/);
-            
-            if (noteContentBody && noteContentBody.length > 1) {
-                noteContent = noteContentBody[1];
+            if (noteContent == null) {
+                el.classList.add(CLASS_WHEN_READONLY);
+                noteContent = "Loading...";
+            } else {
+                if (!note.isMissingResourceData()) {
+                    el.classList.remove(CLASS_WHEN_READONLY);
+                    elWarning.style.display = "none";
+                }
+                var noteContentBody = noteContent.match(/<body[^>]*>([\w\W]*)<\/body>/);
+                if (noteContentBody && noteContentBody.length > 1) {
+                    noteContent = noteContentBody[1];
+                }
             }
-
-            noteContentBeforeEdit = noteContent.replace(/\/>/g,">");
+            
+//            noteContentBeforeEdit = noteContent.replace(/\/>/g,">");
             noteNameBeforeEdit = noteName;
 
             elContent.innerHTML = noteContent;
+            noteContentBeforeEdit = elContent.innerHTML;
             self.setTitle(noteName);
             /**
              * we currently only support inline-image resources, this is made for future versions of the app
@@ -837,30 +931,43 @@ var App = new function() {
             currentNotebook = notebook;
         };
 
+        this.updateContent = function(note) {
+            currentNote.updateContent(note.content);
+            if (note.guid === currentNote.getGuid()) {
+                DB.getNotes({"guid": note.guid}, function(notes) {
+                    self.show(notes[0], currentNotebook);
+                });
+            }
+        };
+
         this.missingResource = function() {
             el.classList.add(CLASS_WHEN_READONLY);
+            elWarning.style.display = "block";
         };
-        
+
         this.updateResource = function(resource) {
             // Update note resource
             currentNote.updateResourceData(resource.guid, resource.data.body);
+        };
 
-            // Update note view
-            var key = "";
-            for (var i in resource.data.bodyHash) {
-                key += String("0123456789abcdef".substr((resource.data.bodyHash[i] >> 4) & 0x0F,1)) + "0123456789abcdef".substr(resource.data.bodyHash[i] & 0x0F,1);
-            }
-            var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(resource.data.body, resource.mime));
+        this.renderImageResource = function(blobURL, hash) {
             var imgs = elContent.getElementsByTagName("img");
             for (var i = 0, l = imgs.length; i < l; i++) {
-                if (imgs[i].getAttribute("hash") === key) {
-                    // Update content before edit so change detection will work properly.
-                    noteContentBeforeEdit = noteContentBeforeEdit.replace(imgs[i].src, blobURL);
+                if (imgs[i].getAttribute("hash").toLowerCase() === hash) {
                     imgs[i].src = blobURL;
                 }
             }
+            // Update content before edit so change detection will work properly.
+            noteContentBeforeEdit = elContent.innerHTML;
         };
-
+        
+        this.renderImageComplete = function() {
+            if (currentNote && !currentNote.isMissingResourceData()) {
+                el.classList.remove(CLASS_WHEN_READONLY);
+                elWarning.style.display = "none";
+            }
+        };
+        
         this.loadResources = function(note) {
             !note && (note = currentNote);
 
@@ -1385,9 +1492,11 @@ var App = new function() {
             el.className = "note";
             el.dataset.noteId = note.getId();
             el.innerHTML = '<div>' +
-                               '<span class="text">' + title + '</span> <span class="time">' + prettyDate(note.getDateUpdated()) + '</span>' +
+                               '<span class="title">' + title + '</span> <span class="time">' + prettyDate(note.getDateUpdated()) + '</span>' +
                            '</div>' +
-                           '<div class="title">' + getNotePreview(content) + '</div>'
+                           '<div class="text">' + getNotePreview(content) + '</div>'
+            // Not showing image preview because large images are memory intensive
+/*          
             var resources = note.getResources();
             if (resources && resources.length > 0) {
                 var resource = resources[0],
@@ -1399,7 +1508,7 @@ var App = new function() {
 
                 el.appendChild(elResource);
             }
-
+*/
             if (note.isTrashed()) {
                 el.className += " trashed";
             }
