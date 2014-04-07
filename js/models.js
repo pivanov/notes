@@ -243,7 +243,9 @@ var Models = new function() {
             updateObject(self, options);
             validate();
             
-            self.data_date_updated = new Date().getTime();
+            if (options["data_date_updated"] == null) {
+                self.data_date_updated = new Date().getTime();
+            }
             
             DB.updateNote(self, cbSuccess, cbError);
             
@@ -516,6 +518,12 @@ var ResourceTypes = {
 
 function updateObject(obj, options) {
     if (!options) return;
+    if (options["created"]) {
+        options["date_created"] = options["created"];
+    }
+    if (options["updated"]) {
+        options["date_updated"] = options["updated"];
+    }
     for (var k in options) {
         if (k.indexOf('data_') !== -1) {
             key = k;
