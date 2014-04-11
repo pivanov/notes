@@ -18,7 +18,7 @@ var Evernote = new function() {
         TEXTS = null,
 
         NAME_CONFLICT_POSTFIX = " - 1",
-        MAX_RESOURCE_SIZE_TO_FETCH = 2*1024*1024,
+        MAX_RESOURCE_SIZE_TO_FETCH = 1*1024*1024,
         
         tmp_oauth_token,
         oauth_verifier,
@@ -310,52 +310,12 @@ var Evernote = new function() {
         noteStore.getSyncChunk(oauth_token, usn, max, full, c, self.onError);
     };
 
-    this.processSyncChunk_old = function(chunk) {
-        syncChunks.push(chunk);
-        if (chunk.chunkHighUSN < chunk.updateCount) {
-            self.getSyncChunk(chunk.chunkHighUSN, syncMaxEntries, true, self.processSyncChunk);
-        } else {
-            if (App.DEBUG) {
-                Console.log('processSyncChunk: '+JSON.stringify(syncChunks));
-            }
-            for(var i in syncChunks) {
-                if (syncChunks[i].notebooks && syncChunks[i].notebooks.length > 0) {
-                    for (var j in syncChunks[i].notebooks) {
-                        syncList.notebooks.push(syncChunks[i].notebooks[j]);
-                        totalSyncChunks++;
-                    }
-                }
-                if (syncChunks[i].notes && syncChunks[i].notes.length > 0) {
-                    for (var j in syncChunks[i].notes) {
-                        syncList.notes.push(syncChunks[i].notes[j]);
-                        totalSyncChunks++;
-                    }
-                }
-                if (syncChunks[i].expungedNotebooks && syncChunks[i].expungedNotebooks.length > 0) {
-                    for (var j in syncChunks[i].expungedNotebooks) {
-                        syncList.expungedNotebooks.push(syncChunks[i].expungedNotebooks[j]);
-                        totalSyncChunks++;
-                    }
-                }
-                if (syncChunks[i].expungedNotes && syncChunks[i].expungedNotes.length > 0) {
-                    for (var j in syncChunks[i].expungedNotes) {
-                        syncList.expungedNotes.push(syncChunks[i].expungedNotes[j]);
-                        totalSyncChunks++;
-                    }
-                }
-
-                last_update_count = syncChunks[i].updateCount;
-                last_sync_time = syncChunks[i].currentTime;
-            }
-            self.processSyncChunkList();
-        }
-    };
-
     this.processSyncChunk = function(chunk) {
         lastChunkUSN = chunk.chunkHighUSN;
         lastUSN = chunk.updateCount;
         if (firstUSN === 0) {
             firstUSN = lastUSN;
+            currentUSN = 0;
         }
         
         if (chunk.notebooks && chunk.notebooks.length > 0) {
@@ -393,7 +353,9 @@ var Evernote = new function() {
         last_update_count = chunk.updateCount;
         last_sync_time = chunk.currentTime;
 
-        currentUSN = firstUSN;
+        if (currentUSN == 0) {
+            currentUSN = firstUSN;
+        }
         self.processSyncChunkList();
     };
     
@@ -426,47 +388,13 @@ var Evernote = new function() {
             self.processExpungedNoteChunk(chunk);
         } else {
             if (lastChunkUSN < lastUSN) {
-                self.getSyncChunk(lastChunkUSN, syncMaxEntries, true, self.processSyncChunk);                
+                noteStore.getSyncChunk(oauth_token, lastChunkUSN, syncMaxEntries, true, self.processSyncChunk, self.onError);
             } else {
                 self.finishSync();
             }
         }
     };
 
-    this.processSyncChunkList_old = function() {
-        var chunk = null;
-        var remainingSyncChunks = syncList.notebooks.length
-                                + syncList.notes.length
-                                + syncList.expungedNotebooks.length
-                                + syncList.expungedNotes.length;
-        var percentage = 100;
-        if (totalSyncChunks > 0) {
-            percentage = ((totalSyncChunks - remainingSyncChunks) * 100) / totalSyncChunks;
-        }
-        self.updateProgressBar(percentage);
-        if (App.DEBUG) {
-            Console.log('this.processSyncList');
-            Console.log('this.processSyncList syncList.notebooks.length: '+syncList.notebooks.length);
-            Console.log('this.processSyncList syncList.notes.length: '+syncList.notes.length);
-            Console.log('this.processSyncList syncList.expungedNotebooks.length: '+syncList.expungedNotebooks.length);
-            Console.log('this.processSyncList syncList.expungedNotes.length: '+syncList.expungedNotes.length);
-        }
-        if (syncList.notebooks.length > 0) {
-            chunk = syncList.notebooks.pop();
-            self.processNotebookChunk(chunk);
-        } else if (syncList.notes.length > 0) {
-            chunk = syncList.notes.pop();
-            self.processNoteChunk(chunk);
-        } else if (syncList.expungedNotebooks.length > 0) {
-            chunk = syncList.expungedNotebooks.pop();
-            self.processExpungedNotebookChunk(chunk);
-        } else if (syncList.expungedNotes.length > 0) {
-            chunk = syncList.expungedNotes.pop();
-            self.processExpungedNoteChunk(chunk);
-        } else {
-            self.finishSync();
-        }
-    };
     this.updateProgressBar = function(percentage) {
         document.querySelector('progress').value = parseInt(Math.ceil(percentage));
     }
@@ -474,69 +402,68 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('this.processNotebookChunk (chunk): '+JSON.stringify(chunk));
         }
-        self.getNotebook(chunk.guid, function(notebook){
+        var notebook = chunk;
+        if (App.DEBUG) {
+            Console.log('self.getNotebook: '+JSON.stringify(notebook));
+        }
+        DB.getNotebookByIndex("guid", notebook.guid, function(resultsGuid){
             if (App.DEBUG) {
-                Console.log('self.getNotebook: '+JSON.stringify(notebook));
+                Console.log('DB.getNotebookByIndex by guid: '+JSON.stringify(resultsGuid));
             }
-            DB.getNotebookByIndex("guid", notebook.guid, function(resultsGuid){
+            DB.getNotebookByIndex("name", notebook.name, function(resultsName){
                 if (App.DEBUG) {
-                    Console.log('DB.getNotebookByIndex by guid: '+JSON.stringify(resultsGuid));
+                    Console.log('DB.getNotebookByIndex by name: '+JSON.stringify(resultsName));
                 }
-                DB.getNotebookByIndex("name", notebook.name, function(resultsName){
+                DB.getQueues({rel: "Notebook", rel_guid: notebook.guid}, function(resultsQueue){
                     if (App.DEBUG) {
-                        Console.log('DB.getNotebookByIndex by name: '+JSON.stringify(resultsName));
+                        Console.log('DB.getQueues by notebook.guid: '+JSON.stringify(resultsQueue));
                     }
-                    DB.getQueues({rel: "Notebook", rel_guid: notebook.guid}, function(resultsQueue){
-                        if (App.DEBUG) {
-                            Console.log('DB.getQueues by notebook.guid: '+JSON.stringify(resultsQueue));
-                        }
-                        if (resultsQueue.length == 0) {
-                            if (resultsGuid == null) {
-                                if (resultsName == null) {
-                                    App.getUser().newNotebook(notebook, self.processSyncChunkList);
-                                } else {
-                                    if (!resultsName.getGuid() || resultsName.getGuid() == notebook.guid) {
-                                        resultsName.set(notebook, self.processSyncChunkList);
-                                    } else {
-                                        App.getUser().newNotebook(notebook, self.processSyncChunkList);
-                                    }
-                                }
+                    if (resultsQueue.length == 0) {
+                        if (resultsGuid == null) {
+                            if (resultsName == null) {
+                                App.getUser().newNotebook(notebook, self.processSyncChunkList);
                             } else {
-                                resultsGuid.set(notebook, self.processSyncChunkList);
+                                if (!resultsName.getGuid() || resultsName.getGuid() == notebook.guid) {
+                                    resultsName.set(notebook, self.processSyncChunkList);
+                                } else {
+                                    App.getUser().newNotebook(notebook, self.processSyncChunkList);
+                                }
                             }
                         } else {
-                            if (resultsQueue[0].getExpunge()) {
+                            resultsGuid.set(notebook, self.processSyncChunkList);
+                        }
+                    } else {
+                        if (resultsQueue[0].getExpunge()) {
+                            if (!TEXTS) {
+                                self.setupTexts();
+                            }
+                            if (confirm(TEXTS.NOTEBOOK_DELETE_CONFLICT)) {
+                                App.getUser().newNotebook(notebook, function(){
+                                    resultsQueue[0].remove(self.processSyncChunkList);
+                                });
+                            } else {
+                                self.processSyncChunkList();
+                            }
+                        } else {
+                            if (resultsGuid.getName() != notebook.name) {
                                 if (!TEXTS) {
                                     self.setupTexts();
                                 }
-                                if (confirm(TEXTS.NOTEBOOK_DELETE_CONFLICT)) {
-                                    App.getUser().newNotebook(notebook, function(){
+                                var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(notebook.serviceUpdated));
+                                    txt = txt.replace("{{object}}", "Notebook");
+                                    txt = txt.replace("{{name}}", '"'+resultsGuid.getName()+'"');
+                                if (!confirm(txt)) {
+                                    resultsGuid.set(notebook, function(){
                                         resultsQueue[0].remove(self.processSyncChunkList);
                                     });
                                 } else {
                                     self.processSyncChunkList();
                                 }
                             } else {
-                                if (resultsGuid.getName() != notebook.name) {
-                                    if (!TEXTS) {
-                                        self.setupTexts();
-                                    }
-                                    var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(notebook.serviceUpdated));
-                                        txt = txt.replace("{{object}}", "Notebook");
-                                        txt = txt.replace("{{name}}", '"'+resultsGuid.getName()+'"');
-                                    if (!confirm(txt)) {
-                                        resultsGuid.set(notebook, function(){
-                                            resultsQueue[0].remove(self.processSyncChunkList);
-                                        });
-                                    } else {
-                                        self.processSyncChunkList();
-                                    }
-                                } else {
-                                    resultsGuid.set(notebook, self.processSyncChunkList);
-                                }
+                                resultsGuid.set(notebook, self.processSyncChunkList);
                             }
                         }
-                    });
+                    }
                 });
             });
         });
@@ -545,72 +472,69 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('this.processNoteChunk (chunk): '+JSON.stringify(chunk));
         }
-        Console.log('self.getNote: start for '+chunk.guid);
-        self.getNote(chunk.guid, function(note){
-            Console.log('self.getNote: done for '+chunk.guid);
+        var note = chunk;
+        if (App.DEBUG) {
+            Console.log('self.getNote: '+JSON.stringify(note));
+        }
+        DB.getNoteByIndex("guid", note.guid, function(resultsNote){
+            Console.log('DB.getNoteByIndex: done for '+note.guid);
             if (App.DEBUG) {
-                Console.log('self.getNote: '+JSON.stringify(note));
+                Console.log('DB.getNoteByIndex: '+JSON.stringify(resultsNote));
             }
-            DB.getNoteByIndex("guid", note.guid, function(resultsNote){
-                Console.log('DB.getNoteByIndex: done for '+note.guid);
+            DB.getQueues({rel: "Note", rel_guid: note.guid}, function(resultsQueue){
+                Console.log('DB.getQueues: done for '+note.guid);
                 if (App.DEBUG) {
-                    Console.log('DB.getNoteByIndex: '+JSON.stringify(resultsNote));
+                    Console.log('DB.getQueues by note.guid: '+JSON.stringify(resultsQueue));
                 }
-                DB.getQueues({rel: "Note", rel_guid: note.guid}, function(resultsQueue){
-                    Console.log('DB.getQueues: done for '+note.guid);
-                    if (App.DEBUG) {
-                        Console.log('DB.getQueues by note.guid: '+JSON.stringify(resultsQueue));
+                if (resultsQueue.length > 0) {
+                    if (!TEXTS) {
+                        self.setupTexts();
                     }
-                    if (resultsQueue.length > 0) {
-                        if (!TEXTS) {
-                            self.setupTexts();
-                        }
-                        var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(note.updated));
-                            txt = txt.replace("{{object}}", "Note");
-                            txt = txt.replace("{{name}}", '"'+resultsNote.getTitle()+'"');
-                        if (!confirm(txt)) {
-                            resultsNote.set(note, function(newNote){
-                                if (resultsNote.isTrashed() && newNote.isActive()) {
-                                    newNote.restore(self.processSyncChunkList);
-                                } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
-                                    newNote.trash(self.processSyncChunkList);
-                                } else {
-                                    self.processSyncChunkList();
-                                }
-                            });
-                        } else {
-                            self.processSyncChunkList();
-                        }
+                    var txt = TEXTS.GENERIC_CONFLICT.replace("{{date}}", new Date(note.updated));
+                        txt = txt.replace("{{object}}", "Note");
+                        txt = txt.replace("{{name}}", '"'+resultsNote.getTitle()+'"');
+                    if (!confirm(txt)) {
+                        resultsNote.set(note, function(newNote){
+                            if (resultsNote.isTrashed() && newNote.isActive()) {
+                                newNote.restore(self.processSyncChunkList);
+                            } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
+                                newNote.trash(self.processSyncChunkList);
+                            } else {
+                                self.processSyncChunkList();
+                            }
+                        });
                     } else {
-                        if (resultsNote) {
-                            resultsNote.set(note, function(newNote){
-                                if (resultsNote.isTrashed() && newNote.isActive()) {
-                                    newNote.restore(self.processSyncChunkList);
-                                } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
-                                    newNote.trash(self.processSyncChunkList);
-                                } else {
-                                    self.processSyncChunkList();
-                                }
-                            });
-                        } else {
-                            DB.getNotebookByIndex("guid", note.notebookGuid, function(notebook){
-                                if (App.DEBUG) {
-                                    Console.log('DB.getNotebookByIndex: '+JSON.stringify(notebook));
-                                }
-                                if (notebook) {
-                                    notebook.newNote(note, function(newNote){
-                                        if (!newNote.isActive()) {
-                                            newNote.trash();
-                                        }
-                                        self.processSyncChunkList();
-                                    });
-                                } else {
-                                    self.processSyncChunkList();
-                                }
-                            });
-                        }
+                        self.processSyncChunkList();
                     }
-                });
+                } else {
+                    if (resultsNote) {
+                        resultsNote.set(note, function(newNote){
+                            if (resultsNote.isTrashed() && newNote.isActive()) {
+                                newNote.restore(self.processSyncChunkList);
+                            } else if (!resultsNote.isTrashed() && !newNote.isActive()) {
+                                newNote.trash(self.processSyncChunkList);
+                            } else {
+                                self.processSyncChunkList();
+                            }
+                        });
+                    } else {
+                        DB.getNotebookByIndex("guid", note.notebookGuid, function(notebook){
+                            if (App.DEBUG) {
+                                Console.log('DB.getNotebookByIndex: '+JSON.stringify(notebook));
+                            }
+                            if (notebook) {
+                                notebook.newNote(note, function(newNote){
+                                    if (!newNote.isActive()) {
+                                        newNote.trash();
+                                    }
+                                    self.processSyncChunkList();
+                                });
+                            } else {
+                                self.processSyncChunkList();
+                            }
+                        });
+                    }
+                }
             });
         });
     };
@@ -644,8 +568,11 @@ var Evernote = new function() {
             sync_try_count : 0
         }, self.sendChanges);
     };
+    this.noteContentLoaded = function(note) {
+        App.updateNoteContent(note);
+    };
     this.resourceLoaded = function(resource) {
-        App.updateNoteResource(resource);
+        App.resourceDataLoaded(resource);
     };
 
     this.sendChanges = function() {
@@ -1014,27 +941,49 @@ var Evernote = new function() {
     };
 
     this.enml2html = function(note, loadResources) {
+        if (note.data_content == null && loadResources) {
+            // Delay fetching of note contents
+            noteStore.getNote(oauth_token, note.getGuid(), true, false, false, false, this.noteContentLoaded);
+            return null;
+        }
+
         var hashMap = {};
         var noteResources = note.data_resources || [];
         for (var r in noteResources) {
             if (loadResources && noteResources[r].data.body == null) {
                 // Delay fetching of resources
                 // Fetch only if resource size is less than limit
-                if (noteResources[r].data.size <= MAX_RESOURCE_SIZE_TO_FETCH) {
+                if ((noteResources[r].data.size <= MAX_RESOURCE_SIZE_TO_FETCH) &&
+                    (noteResources[r].mime.match('image'))) {
                     noteStore.getResource(oauth_token, noteResources[r].guid, true, true, true, true, this.resourceLoaded);
+                    App.pendingResourceData(noteResources[r].guid);
                 } else {
                     App.noteResourceNotLoaded();
                 }
             }
             if (noteResources[r].data.body instanceof ArrayBuffer && typeof noteResources[r].data.bodyHash === "string") {
-                hashMap[noteResources[r].data.bodyHash] = window.URL.createObjectURL(ArrayBufferHelper.getBlob(noteResources[r].data.body, noteResources[r].mime));
+                if (noteResources[r].data.body != null) {
+                    hashMap[noteResources[r].data.bodyHash] = App.resizeImage(noteResources[r].data.body, noteResources[r].width, noteResources[r].height, noteResources[r].mime, noteResources[r].data.bodyHash);
+                }
+//                if (hashMap[noteResources[r].data.bodyHash] == null) {
+//                    hashMap[noteResources[r].data.bodyHash] = window.URL.createObjectURL(ArrayBufferHelper.getBlob(null, noteResources[r].mime));
+//                }
             } else {
                 var key = "";
 
                 for (var i in noteResources[r].data.bodyHash) {
                     key += String("0123456789abcdef".substr((noteResources[r].data.bodyHash[i] >> 4) & 0x0F,1)) + "0123456789abcdef".substr(noteResources[r].data.bodyHash[i] & 0x0F,1);
                 }
-                hashMap[key] = window.URL.createObjectURL(ArrayBufferHelper.getBlob(noteResources[r].data.body, noteResources[r].mime));
+                if (noteResources[r].data.body != null) {
+                    hashMap[key] = App.resizeImage(noteResources[r].data.body, noteResources[r].width, noteResources[r].height, noteResources[r].mime, key);
+                }
+                if (noteResources[r].data.size > MAX_RESOURCE_SIZE_TO_FETCH) {
+//                    hashMap[key] = "../images/image_missing.png";
+                    hashMap[key] = null;
+                }
+//                if (hashMap[key] == null) {
+//                    hashMap[key] = window.URL.createObjectURL(ArrayBufferHelper.getBlob(null, noteResources[r].mime));
+//                }
             }
         }
         return enml.HTMLOfENML(note.getContent(false, false), hashMap);
