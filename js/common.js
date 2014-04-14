@@ -273,6 +273,10 @@ var App = new function() {
         return user;
     };
 
+    this.updateMigrationStatus = function(data, c, e) {
+        user.set(data, c, e);
+    };
+
     this.updateUserData = function(data, c, e) {
         user.set(data, c, e);
         Settings.update();
@@ -337,13 +341,13 @@ var App = new function() {
         return notes;
     };
 
-    this.addQueue = function addQueue(type, obj) {
+    this.addQueue = function addQueue(type, obj, cbSuccess) {
         new Models.Queue({
             rel : type,
             rel_id : obj.data_id || obj.id,
             rel_guid : obj.data_guid || obj.guid,
             expunge : obj.expunge || false
-        }).set(onAddQueue);
+        }).set(cbSuccess || onAddQueue);
     };
 
     this.getQueues = function getQueues(cbSuccess, cbError) {
@@ -443,6 +447,7 @@ var App = new function() {
             key += String("0123456789abcdef".substr((resource.data.bodyHash[i] >> 4) & 0x0F,1)) + "0123456789abcdef".substr(resource.data.bodyHash[i] & 0x0F,1);
         }
         App.resizeImage(resource.data.body, resource.width, resource.height, resource.mime, key);
+        App.processImageResizeQueue();
     };
     
     this.noteResourceNotLoaded = function(resource) {
@@ -458,9 +463,6 @@ var App = new function() {
                "type" : type,
                "hash" : hash
             });
-            if (resizeInProgress == 0) {
-                self.processImageResizeQueue();
-            }
             return null;
         } else {
             var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(data, type));
@@ -891,12 +893,12 @@ var App = new function() {
 
         this.show = function(note, notebook) {
             elWarning.style.display = "none";
+            el.classList.add(CLASS_WHEN_READONLY);
+            noteContent = "Loading...";
+
             var noteContent = note.getContent(true, true),
                 noteName = note.getName();
-            if (noteContent == null) {
-                el.classList.add(CLASS_WHEN_READONLY);
-                noteContent = "Loading...";
-            } else {
+            if (noteContent != null) {
                 if (!note.isMissingResourceData()) {
                     el.classList.remove(CLASS_WHEN_READONLY);
                     elWarning.style.display = "none";
@@ -932,11 +934,20 @@ var App = new function() {
         };
 
         this.updateContent = function(note) {
-            currentNote.updateContent(note.content);
-            if (note.guid === currentNote.getGuid()) {
-                DB.getNotes({"guid": note.guid}, function(notes) {
-                    self.show(notes[0], currentNotebook);
-                });
+            if (typeof note.guid !== "undefined") {
+                currentNote.updateContent(note.content);
+                if (note.guid === currentNote.getGuid()) {
+                    DB.getNoteByIndex("guid", note.guid, function(note) {
+                        self.show(note, currentNotebook);
+                    });
+                }
+            } else {
+                currentNote.updateContent(note.data_content);
+                if (note.getId() === currentNote.getId()) {
+                    DB.getNoteByKey(note.getId(), function(note) {
+                        self.show(note, currentNotebook);
+                    });
+                }
             }
         };
 
@@ -1482,7 +1493,12 @@ var App = new function() {
         function getNoteElement(note) {
             var el = document.createElement("li");
 
-            var content = note.getContent(true, false);
+            var content;
+            if (typeof note.data_text !== "undefined" && note.data_text != null) {
+                content = note.data_text;
+            } else {
+                content = note.getContent(true, false);
+            }
             var contentBody = content.match(/<body[^>]*>([\w\W]*)<\/body>/);
             if (contentBody && contentBody.length > 1) {
                 content = contentBody[1];
@@ -2079,11 +2095,46 @@ function $(s) { return document.getElementById(s); }
 function $$(s) { return document.querySelector(s); }
 function html(el, s) { el.innerHTML = (s || "").replace(/</g, '&lt;'); }
 
+function b64ToUint6(nChr) {
+  return nChr > 64 && nChr < 91 ?
+      nChr - 65
+    : nChr > 96 && nChr < 123 ?
+      nChr - 71
+    : nChr > 47 && nChr < 58 ?
+      nChr + 4
+    : nChr === 43 ?
+      62
+    : nChr === 47 ?
+      63
+    :
+      0;
+}
+
 var ArrayBufferHelper = {
     getBlob : function(arraybuffer, type) {
         return new Blob([arraybuffer], {type: type});
+    },
+
+    b64ToArrayBuffer : function(sBase64, nBlocksSize) {
+      var
+        sB64Enc = sBase64.replace(/[^A-Za-z0-9\+\/]/g, ""), nInLen = sB64Enc.length,
+        nOutLen = nBlocksSize ? Math.ceil((nInLen * 3 + 1 >> 2) / nBlocksSize) * nBlocksSize : nInLen * 3 + 1 >> 2, taBytes = new Uint8Array(nOutLen);
+
+      for (var nMod3, nMod4, nUint24 = 0, nOutIdx = 0, nInIdx = 0; nInIdx < nInLen; nInIdx++) {
+        nMod4 = nInIdx & 3;
+        nUint24 |= b64ToUint6(sB64Enc.charCodeAt(nInIdx)) << 18 - 6 * nMod4;
+        if (nMod4 === 3 || nInLen - nInIdx === 1) {
+          for (nMod3 = 0; nMod3 < 3 && nOutIdx < nOutLen; nMod3++, nOutIdx++) {
+            taBytes[nOutIdx] = nUint24 >>> (16 >>> nMod3 & 24) & 255;
+          }
+          nUint24 = 0;
+
+        }
+      }
+      return taBytes;
     }
 };
+
 
 window.onload = function() {
     navigator.mozL10n.ready(App.init);

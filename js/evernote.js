@@ -39,6 +39,9 @@ var Evernote = new function() {
         lastChunkUSN = 0,
         lastUSN = 0,
         
+        migratedCount = 0,
+        totalToMigrate = 0,
+        
         queueList = {
             notebooks : [],
             notes : []
@@ -278,8 +281,11 @@ var Evernote = new function() {
         self.getSyncChunk(last_update_count, syncMaxEntries, false, self.processSyncChunk);
     };
     this.startFullSync = function() {
-        firstUSN = 0;
-        self.getSyncChunk(0, syncMaxEntries, true, self.processSyncChunk);
+        App.startSync();
+        self.migrateAllData(function() {
+            firstUSN = 0;
+            self.getSyncChunk(0, syncMaxEntries, true, self.processSyncChunk);
+        });
     };
 
     this.getSyncChunk = function(usn, max, full, c) {
@@ -941,6 +947,10 @@ var Evernote = new function() {
     };
 
     this.enml2html = function(note, loadResources) {
+        if (typeof note.data_text !== "undefined" && note.data_text != null && loadResources) {
+            this.migrateNoteData(note, this.noteContentLoaded);
+            return null;
+        }
         if (note.data_content == null && loadResources) {
             // Delay fetching of note contents
             noteStore.getNote(oauth_token, note.getGuid(), true, false, false, false, this.noteContentLoaded);
@@ -986,6 +996,7 @@ var Evernote = new function() {
 //                }
             }
         }
+        App.processImageResizeQueue();
         return enml.HTMLOfENML(note.getContent(false, false), hashMap);
     };
 
@@ -1002,6 +1013,129 @@ var Evernote = new function() {
             "NOTEBOOK_DELETE_CONFLICT": navigator.mozL10n.get("notebook-delete-conflict"),
             "GENERIC_CONFLICT": navigator.mozL10n.get("generic-conflict"),
             "SYNC_FAILED": navigator.mozL10n.get("sync-failed")
+        };
+    };
+
+    this.migrationComplete = function(callback) {
+        App.updateMigrationStatus({
+            migration_complete : true
+        }, callback);
+    };
+    
+    this.migrationInProgress = function() {
+        return App.getUser().migration_complete != true;
+    };
+    
+    this.migrateAllData = function(callback) {
+        if (self.migrationInProgress()) {
+            DB.getNotebooks({}, function(notebooks) {
+                self.migrateNotebooks(notebooks, callback);
+            });
+        } else {
+            callback && callback();
+        }
+    };
+    
+    this.migrateNotebooks = function(notebooks, callback) {
+        if (notebooks.length > 0) {
+            var notebook = notebooks.pop();
+            App.addQueue("Notebook", notebook, function() {
+               self.migrateNotebooks(notebooks, callback); 
+            });
+        } else {
+            self.migrateAllNotes(callback);
+        }
+    };
+    
+    this.migrateAllNotes = function(callback) {
+        if (self.migrationInProgress()) {
+            DB.getNotes({"content":undefined}, function(notes) {
+                totalToMigrate = notes.length;
+                self.migrateNotes(notes, callback);
+            });
+        } else {
+            callback && callback();
+        }
+    };
+    
+    this.migrateNotes = function(notes, callback) {
+        if (notes.length > 0) {
+            var n = notes.pop();
+            migratedCount++;
+            self.updateProgressBar((migratedCount*100)/totalToMigrate);
+            self.migrateNoteData(n, function() {
+                self.migrateNotes(notes, callback);
+            });
+        } else {
+            self.migrationComplete(callback);
+        }
+    };
+    
+    this.migrateNoteData = function(note, callback) {
+        // Get resource objects and
+        // 1. convert to ArrayBuffer and compute hash
+        // 2. create <img> element with hash only
+        // 3. Replace images from obj.text with new <img>
+        DB.getNoteResources({"noteId":note.data_id}, function(resources) {
+            var content = note.data_text.replace("\n", "<br/>");
+            var newResources = [];
+            for (var i = 0, len = resources.length; i < len; i++) {
+                var noteResource = self.createNoteResource(resources[i]);
+                newResources.push(noteResource);
+                content = content.concat(self.createImageTag(noteResource));
+            }
+
+            var newObj = {
+                id: note.data_id,
+                title: note.data_title || (content || "").split(/<br[^>]*>/i)[0],
+                content: content,
+                text: null,
+                resources: newResources,
+                country: note.data_country,
+                city: note.data_city,
+                date_created: note.data_date_created,
+                date_updated: note.data_date_updated,
+                trashed: note.data_trashed,
+                active: true,
+                notebook_id: note.data_notebook_id,
+                metadata: note.data_metadata
+            };
+
+            note.set(newObj, function(note) {
+                App.addQueue("Note", note, function() {
+                    callback && callback(note);                    
+                });
+            });
+        });
+    };
+
+    this.createImageTag = function(resource) {
+        return '<br/><img hash="'+resource.data.bodyHash+'" type="'+resource.mime+'">';
+    };
+    
+    this.createNoteResource = function(image) {
+        var regex = /;base64,/;
+        var res = regex.exec(image.getSrc());
+        var mimetype = image.getSrc().substring(5, res.index);
+        var data = image.getSrc().substring(res.index+8);
+
+        var mimeRegex = /\//;
+        res = mimeRegex.exec(mimetype);
+        var filetype = mimetype.substring(res.index+1);
+        
+        var array = ArrayBufferHelper.b64ToArrayBuffer(data);
+        var filename = image.getName()+'-'+image.getId()+'.'+filetype;
+        return {
+            noteGuid: null,
+            mime: mimetype,
+            data: {
+                body: array.buffer,
+                bodyHash: SparkMD5.ArrayBuffer.hash(array.buffer),
+                size: array.length
+            },
+            attributes: new ResourceAttributes({
+                fileName: filename
+            })
         };
     };
 

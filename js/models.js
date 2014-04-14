@@ -14,6 +14,7 @@ var Models = new function() {
         this.data_shard_url = "";
         this.data_expires = 0;
         this.data_sync_try_count = 0;
+        this.data_migration_complete = false;
         
         function init(options) {
             updateObject(self, options);
@@ -51,7 +52,7 @@ var Models = new function() {
         };
 
         this.isValidEvernoteUser = function() {
-            return (self.getOauthToken() && self.getNoteStoreUrl() && self.getExpires() > new Date().getTime());
+            return (self.data_migration_complete && self.getOauthToken() && self.getNoteStoreUrl() && self.getExpires() > new Date().getTime());
         };
         
         this.getId = function() { return self.data_id; };
@@ -243,7 +244,7 @@ var Models = new function() {
             updateObject(self, options);
             validate();
             
-            if (options["data_date_updated"] == null) {
+            if (options["data_date_updated"] == null && options["date_updated"] == null) {
                 self.data_date_updated = new Date().getTime();
             }
             
@@ -468,54 +469,30 @@ var Models = new function() {
         init(initOptions);
     };
 
-    // this.NoteResource = function(initOptions) {
-    //     var self = this;
+    this.NoteResource = function(initOptions) {
+        var self = this;
         
-    //     this.data_id = '';
-    //     this.data_name = '';
-    //     this.data_src = '';
-    //     this.data_size = -1;
-    //     this.data_type = '';
-    //     this.data_noteId = '';
-    //     this.data_metadata = {};
+        this.data_id = '';
+        this.data_name = '';
+        this.data_src = '';
+        this.data_size = -1;
+        this.data_type = '';
+        this.data_noteId = '';
+        this.data_metadata = {};
             
-    //     function init(options) {
-    //         updateObject(self, options);
-    //         validate();
-    //     }
+        function init(options) {
+            updateObject(self, options);
+        }
         
-    //     this.set = function(options, cbSuccess, cbError) {
-    //         updateObject(self, options);
-    //         validate();
-            
-    //         DB.updateNoteResource(self, cbSuccess, cbError);
-            
-    //         return self;        
-    //     };
-        
-    //     this.remove = function(cbSuccess, cbError) {
-    //         DB.removeNoteResource(self, cbSuccess, cbError);
-    //     };
-        
-    //     this.getId = function() { return self.data_id; };
-    //     this.getName = function() { return self.data_name; };
-    //     this.getSrc = function() { return self.data_src; };
-    //     this.getSize = function() { return self.data_size; };
-    //     this.getType = function() { return self.data_type; };
-    //     this.getNoteId = function() { return self.data_noteId; };
+        this.getId = function() { return self.data_id; };
+        this.getName = function() { return self.data_name; };
+        this.getSrc = function() { return self.data_src; };
+        this.getSize = function() { return self.data_size; };
+        this.getType = function() { return self.data_type; };
+        this.getNoteId = function() { return self.data_noteId; };
 
-    //     this.export = function() {
-    //         return exportModel(self);
-    //     };
-        
-    //     function validate() {
-    //         if (!self.data_id) {
-    //             self.data_id = "nr_" + new Date().getTime() + "_" + Math.round(Math.random()*100000);
-    //         }
-    //     }
-        
-    //     init(initOptions);
-    // };
+        init(initOptions);
+    };
 };
 
 var ResourceTypes = {
