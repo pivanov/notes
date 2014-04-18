@@ -289,6 +289,7 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
     left: 1rem;
     color: #a0a0a0;
     font-size: 12px;
+    font-style: italic;
 }
 
 #note-edit-actions {
