@@ -8,6 +8,7 @@ var Evernote = new function() {
         NOTESTORE_PORT = "443",
         NOTESTORE_PROTOCOL = "https",
         OAUTH_SIGNATURE_METHOD = "PLAINTEXT",
+        NOTES_APP_ORIGIN = "app://notes.gaiamobile.org",
         NOTES_APP_CALLBACK_URL = "http://ffos-notes.local/redirect.html",
         REQUEST_TOKEN_URL = EVERNOTE_SERVER+"/oauth",
         ACCESS_TOKEN_URL = EVERNOTE_SERVER+"/oauth",
@@ -190,13 +191,16 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('getAuthorization url: '+AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
         }
-        authWindow = window.open(AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
+        var authWindow = window.open(AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
         window.addEventListener('message', function onMessage(evt) {
-            authWindow.close();
-            tmp_oauth_token = evt.data.oauth_token;
-            oauth_verifier = evt.data.oauth_verifier;
+            if (authWindow == evt.source &&
+                evt.origin === NOTES_APP_ORIGIN) {
+                authWindow.close();
+                tmp_oauth_token = evt.data.oauth_token;
+                oauth_verifier = evt.data.oauth_verifier;
 
-            self.getAccessToken();
+                self.getAccessToken();
+            }
         });
     };
 
