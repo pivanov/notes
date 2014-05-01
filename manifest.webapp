@@ -4,6 +4,7 @@
   "version": "2.2",
   "launch_path": "/index.html",
   "type": "privileged",
+  "origin": "app://notes.gaiamobile.org",
   "redirects": [
     {
       "from": "http://ffos-notes.local/redirect.html",
