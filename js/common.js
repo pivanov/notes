@@ -751,7 +751,7 @@ var App = new function() {
             var el = document.createElement("li"),
                 numberOfApps = notebook.getNumberOfNotes();
 
-            el.innerHTML = html_str(notebook.getName()) + (numberOfApps? " (" + numberOfApps + ")" : "");
+            el.innerHTML = notebook.getName() + (numberOfApps? " (" + numberOfApps + ")" : "");
 
             el.addEventListener("touchstart", function(e){
                 tapIgnored = false;
@@ -1250,7 +1250,7 @@ var App = new function() {
                 currentValue = elSelect.value;
 
             for (var i=0,notebook; notebook=notebooks[i++];) {
-                html += '<option value="' + notebook.getId() + '">' + html_str(notebook.getName()) + '</option>';
+                html += '<option value="' + notebook.getId() + '">' + notebook.getName() + '</option>';
             }
             elSelect.innerHTML = html;
 
@@ -1503,14 +1503,14 @@ var App = new function() {
             if (contentBody && contentBody.length > 1) {
                 content = contentBody[1];
             }
-            var title = html_str(note.getName() || getNoteNameFromContent(content));
+            var title = (note.getName() || getNoteNameFromContent(content));
             
             el.className = "note";
             el.dataset.noteId = note.getId();
             el.innerHTML = '<div>' +
                                '<span class="title">' + title + '</span> <span class="time">' + prettyDate(note.getDateUpdated()) + '</span>' +
                            '</div>' +
-                           '<div class="text">' + html_str(getNotePreview(content)) + '</div>'
+                           '<div class="text">' + getNotePreview(content) + '</div>'
             // Not showing image preview because large images are memory intensive
 /*          
             var resources = note.getResources();
@@ -2093,8 +2093,7 @@ function getEventPoint(e) {
 
 function $(s) { return document.getElementById(s); }
 function $$(s) { return document.querySelector(s); }
-function html_str(s) { return (s || "").replace(/</g, '&lt;'); }
-function html(el, s) { el.innerHTML = html_str(s); }
+function html(el, s) { el.innerHTML = (s || "").replace(/</g, '&lt;'); }
 
 function b64ToUint6(nChr) {
   return nChr > 64 && nChr < 91 ?
