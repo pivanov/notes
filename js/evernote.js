@@ -190,13 +190,16 @@ var Evernote = new function() {
         if (App.DEBUG) {
             Console.log('getAuthorization url: '+AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
         }
-        authWindow = window.open(AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
+        var authWindow = window.open(AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
         window.addEventListener('message', function onMessage(evt) {
-            authWindow.close();
-            tmp_oauth_token = evt.data.oauth_token;
-            oauth_verifier = evt.data.oauth_verifier;
-
-            self.getAccessToken();
+            if (authWindow == evt.source &&
+                evt.origin === NOTES_APP_ORIGIN) {
+                authWindow.close();
+                tmp_oauth_token = evt.data.oauth_token;
+                oauth_verifier = evt.data.oauth_verifier;
+                
+                self.getAccessToken();
+            }
         });
     };
 
