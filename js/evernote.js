@@ -193,7 +193,7 @@ var Evernote = new function() {
         var authWindow = window.open(AUTHORIZATION_URL+'?oauth_token='+tmp_oauth_token);
         window.addEventListener('message', function onMessage(evt) {
             if (authWindow == evt.source &&
-                evt.origin === NOTES_APP_ORIGIN) {
+                evt.origin === window.location.origin) {
                 authWindow.close();
                 tmp_oauth_token = evt.data.oauth_token;
                 oauth_verifier = evt.data.oauth_verifier;
