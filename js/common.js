@@ -2068,20 +2068,19 @@ function prettyDate(time) {
     return '';
   }
 
-  return day_diff == 0 && (
-    diff < 60 && navigator.mozL10n.get("just-now") ||
-    diff < 120 && navigator.mozL10n.get("1-minute-ago") ||
-    diff < 3600 && navigator.mozL10n.get("minutes-ago", { "t": Math.floor(diff / 60) }) ||
-    diff < 7200 && navigator.mozL10n.get("1-hour-ago") ||
-    diff < 86400 && navigator.mozL10n.get("hours-ago", { "t": Math.floor(diff / 3600) })) ||
-    day_diff == 1 && navigator.mozL10n.get("yesterday") ||
-    day_diff < 7 && navigator.mozL10n.get("days-ago", { "t": day_diff }) ||
-    day_diff < 9 && navigator.mozL10n.get("a-week-ago") ||
+  return day_diff < 0 && ' ' ||
+    // Less than one day -- return relative hours/minutes
+    day_diff == 0 && (
+        diff < 3600 && navigator.mozL10n.get("minutes-ago", { "t": Math.floor(diff / 60) }) ||
+        diff < 86400 && navigator.mozL10n.get("hours-ago", { "t": Math.floor(diff / 3600) })) ||
+    // Less than one week -- return relative days
+    day_diff < 8 && navigator.mozL10n.get("days-ago", { "t": day_diff }) ||
+    // Over one week -- return last edit date
     formatDate(new Date(time));
 }
 
 function formatDate(date) {
-    return date.getDate() + "/" + date.getMonth() + "/" + date.getFullYear();
+    return date.getDate() + "/" + (date.getMonth()+1) + "/" + date.getFullYear();
 }
 
 function getEventPoint(e) {
