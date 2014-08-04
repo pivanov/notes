@@ -27,7 +27,11 @@
   },
   "orientation": "portrait",
   "icons": {
-    "128": "/images/icon.png"
+    "84": "/images/Icon_Notes@1.png",
+    "126": "/images/Icon_Notes@1.5.png",
+    "142": "/images/Icon_Notes@2.png",
+    "189": "/images/Icon_Notes@2.25.png",
+    "284": "/images/Icon_Notes@3.375.png"
   },
   "locales": {
     "en-US": {
