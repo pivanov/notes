@@ -38,9 +38,7 @@ section[role="region"] > header:first-child h2 {
     height: 100%;
     font-weight: normal;
 }
-section[role="region"] > header:first-child > button, section[role="region"] > header:first-child > a {
-    width: 2.5rem;
-}
+
 section[role="region"] > header:first-child input[type="text"] {
     position: absolute;
     top: 0;
@@ -447,19 +445,6 @@ section[role="region"] > header:first-child menu[type="toolbar"] {
             border-bottom: 0;
         }
 
-#notebooks.active + section[role="region"] > header:first-child > button, #notebooks.active + section[role="region"] > header:first-child > a {
-    background-position: 4rem center;
-    width: 5rem;
-}
-#notebooks.active + section[role="region"] > header:first-child > button .icon, #notebooks.active + section[role="region"] > header:first-child > a .icon, #notebooks.active + section[role="region"] > header:first-child > button .icon:after, #notebooks.active + section[role="region"] > header:first-child > a .icon:after {
-    width: 4rem;
-}
-#notebooks.active + section[role="region"] > header > a .icon.icon-menu, #notebooks.active + section[role="region"] > header > button .icon.icon-menu {
-    background-position: center center;
-}
-#notebooks.active + section[role="region"] > header:first-child h1 {
-    margin-left: 5rem;
-}
 #search {
     position: relative;
     padding: 0.5rem 2rem;
@@ -708,11 +693,13 @@ body.offline #button-manual-sync {
 .loggedin section[role="region"] > header:first-child > button .icon:after, .loggedin section[role="region"] > header:first-child > a .icon:after {
     background-color: #498722;
 }
-.loggedin section[role="region"] > header:first-child menu[type="toolbar"] a:last-child,
-.loggedin section[role="region"] > header:first-child menu[type="toolbar"] button:last-child,
-.loggedin section[role="region"] > header:first-child > button,
-.loggedin section[role="region"] > header:first-child > a {
-    background-image: url(../images/separator_green.png);
+
+.loggedin section[role="region"] > header:first-child .icon-close {
+  background-image: url(/shared/style/headers/images/icons/close.png);
+}
+
+.loggedin section[role="region"] > header:first-child h1 {
+  color: #fff;
 }
 
 #settings .buttons:not(.premium) {
@@ -761,7 +748,7 @@ body.offline #button-manual-sync {
     white-space: normal;
     width: 25rem;
 }
-.drawer footer #button-evernote-login span {    
+.drawer footer #button-evernote-login span {
     color: #FFFFFF;
     font-size: 1.4rem;
     font-weight: 600;

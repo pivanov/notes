@@ -132,7 +132,7 @@ var App = new function() {
 
         elButtonEvernoteLogin = $("button-evernote-login");
         self.checkGeckoVersion();
-        
+
         DB.init(initUser);
 
         document.body.classList.remove(CLASS_LOADING);
@@ -268,7 +268,7 @@ var App = new function() {
             elButtonEvernoteLogin.style.display = "none";
         }
     };
-    
+
     this.getUser = function() {
         return user;
     };
@@ -430,7 +430,7 @@ var App = new function() {
             "guid" : guid
         });
     };
-    
+
     this.resourceDataLoaded = function(resource) {
         var indexFound = null;
         for (var i = 0, len = imageLoadQueue.length; i < len; i++) {
@@ -439,7 +439,7 @@ var App = new function() {
             }
         }
         imageLoadQueue.splice(indexFound, 1);
-        
+
         NoteView.updateResource(resource);
 
         var key = "";
@@ -449,11 +449,11 @@ var App = new function() {
         App.resizeImage(resource.data.body, resource.width, resource.height, resource.mime, key);
         App.processImageResizeQueue();
     };
-    
+
     this.noteResourceNotLoaded = function(resource) {
         NoteView.missingResource();
     };
-    
+
     this.resizeImage = function(data, width, height, type, hash) {
         if (screen.width < width) {
             imageResizeQueue.push({
@@ -467,10 +467,10 @@ var App = new function() {
         } else {
             var blobURL = window.URL.createObjectURL(ArrayBufferHelper.getBlob(data, type));
             NoteView.renderImageResource(blobURL, hash);
-            return blobURL;            
+            return blobURL;
         }
     };
-    
+
     this.processImageResizeQueue = function() {
         if (imageResizeQueue.length > 0) {
             var item = imageResizeQueue.pop();
@@ -865,7 +865,7 @@ var App = new function() {
             elRestore = el.querySelector("#button-note-restore");
             elDelete = el.querySelector("#button-note-delete");
             elWarning = el.querySelector('#warning');
-            
+
             elTitle.addEventListener("click", self.editTitle);
             elEditTitle.addEventListener("blur", self.saveEditTitle);
             elEditTitle.addEventListener("keyup", function(e){
@@ -908,7 +908,7 @@ var App = new function() {
                     noteContent = noteContentBody[1];
                 }
             }
-            
+
 //            noteContentBeforeEdit = noteContent.replace(/\/>/g,">");
             noteNameBeforeEdit = noteName;
 
@@ -971,14 +971,14 @@ var App = new function() {
             // Update content before edit so change detection will work properly.
             noteContentBeforeEdit = elContent.innerHTML;
         };
-        
+
         this.renderImageComplete = function() {
             if (currentNote && !currentNote.isMissingResourceData()) {
                 el.classList.remove(CLASS_WHEN_READONLY);
                 elWarning.style.display = "none";
             }
         };
-        
+
         this.loadResources = function(note) {
             !note && (note = currentNote);
 
@@ -1094,7 +1094,7 @@ var App = new function() {
         this.currentNoteUnsaveable = function() {
             return currentNote.isMissingResourceData();
         };
-        
+
         function onContentKeyUp(e) {
             if (elContent.innerHTML) {
                 elSave.classList.add(CLASS_WHEN_VISIBLE);
@@ -1325,7 +1325,7 @@ var App = new function() {
 
             elSearchTitle = el.querySelector("h2");
             elSearchNotes = $("searchNotes");
-			
+
             elTitle.addEventListener("click", self.editTitle);
             elEditTitle.addEventListener("blur", self.saveEditTitle);
             elEditTitle.addEventListener("keyup", function(e){
@@ -1504,7 +1504,7 @@ var App = new function() {
                 content = contentBody[1];
             }
             var title = html_str(note.getName() || getNoteNameFromContent(content));
-            
+
             el.className = "note";
             el.dataset.noteId = note.getId();
             el.innerHTML = '<div>' +
@@ -1512,7 +1512,7 @@ var App = new function() {
                            '</div>' +
                            '<div class="text">' + html_str(getNotePreview(content)) + '</div>'
             // Not showing image preview because large images are memory intensive
-/*          
+/*
             var resources = note.getResources();
             if (resources && resources.length > 0) {
                 var resource = resources[0],
@@ -1688,7 +1688,7 @@ var App = new function() {
 
             var elContent = elContainer.querySelector("#note-content");
             var noteTitle = elContainer.querySelector("h1").innerHTML;
-			
+
 			// Get stripped text
             var cloneDom = elContent.cloneNode(true);
             convertFormattingToText(cloneDom);
@@ -2032,9 +2032,9 @@ function stripHTML(html) {
 
 function convertImgToBase64(img) {
     var canvas = document.createElement("canvas");
-    canvas.width = img.width;  
-    canvas.height = img.height;  
-    var ctx = canvas.getContext("2d");  
+    canvas.width = img.width;
+    canvas.height = img.height;
+    var ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0);
     var imgType = img.getAttribute("type")
     return canvas.toDataURL(imgType);
@@ -2143,3 +2143,8 @@ window.onload = function() {
         e.stopPropagation();
     });
 }
+
+
+window.dispatchEvent(new CustomEvent('lazyload', {
+    detail: document.body
+}));
